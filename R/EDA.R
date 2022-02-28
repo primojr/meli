@@ -1,103 +1,92 @@
+## Carregar pacote
 library(tidyverse)
 
-
+# Ler os dados
 df <- read_csv("date/WA_Fn-UseC_-Telco-Customer-Churn.csv") %>%
   janitor::clean_names()
 
 glimpse(df)
 
-
-df <- df %>% select(-multiple_lines    ,-online_security, -payment_method   ,-online_backup     ,-device_protection, -streaming_tv,-streaming_movies  )
-df <- df %>% mutate_if(is.character, as.factor)
+# Remover variaveis que não fazem parte do estudo
+df <- df %>% select(-multiple_lines,-online_security, -payment_method,-online_backup,-device_protection, -streaming_tv,-streaming_movies)
 df$churn = as.character(df$churn)
+
 #EDA
 # Entender os dados
 skimr::skim(df)
-df %>% DataExplorer::plot_histogram(ncol = 2, nrow = 2) # Continua
-
+df %>% DataExplorer::plot_histogram(ncol = 3, nrow = 2) # Continua
 # Aplicar LOG e raiz
-df[-1,] %>% DataExplorer::plot_bar(ncol = 3, nrow = 5) # Categorica
+
+df[-1,] %>% DataExplorer::plot_bar(ncol = 5, nrow = 2) # Categorica
 df %>% janitor::tabyl(churn)
 
+# numerica pelo churn
 df %>% DataExplorer::plot_boxplot(., by = "churn")
-df[,-1] %>% DataExplorer::plot_bar(., by = "churn",ncol = 3, nrow = 5 )
 
-df[,1] %>%
+# Variveis Categoricas pelo churn
+df[,-1] %>% DataExplorer::plot_bar(., by = "churn",ncol = 5, nrow = 3 )
+
+df %>% select(where(is.numeric)) %>%
+  na.omit() %>%
   DataExplorer::plot_correlation()
 
-# Balancer amostra
 
-#desconsiderar: phone_service, genero
-# juntar contract 1-2
-# Metodo automatico unir
-
-library(tidymodels)
-
-# 00 Split
-split_df <- initial_split(df, strata = churn)
-df_train <- training(split_df)
-df_test <- testing(split_df)
-
-df_train %>% janitor::tabyl(churn)
-dim(df_train)
-dim(df_test)
-
-df$monthly_charges  %>% hist
-df$monthly_charges %>% sqrt %>% hist
-# Separar o monthly_charges
+# Transformações:
+# 1. Balancer amostra
+# 2. Desconsiderar: phone_service, genero
+# 3. Juntar contract 1-2
+# 4. Metodo automatico unir
 
 
-# 01 Pré Processamento
-reg_recipe <- recipe(churn ~ ., data = df_train) %>%
-  step_select(-gender,-phone_service) %>%
-  step_mutate(
-    contract = if_else(contract == 'Month-to-month', 'mensal', 'anual')
-    #,payment_method = payment_method %>% if_else(!str_detect(.,"automatic"), "automatic",.)
-    ) %>%
-  step_impute_knn(total_charges) %>%
-  step_normalize(all_numeric_predictors()) %>%
-  step_dummy(tech_support)
+# Testar transaformações
+df$total_charges %>% hist
+df$total_charges %>% sqrt %>% hist
 
-# 04. Engine
-reg_mod  <- rand_forest() %>%
-  set_engine("ranger") %>%
- # set_args(k = 10, importance = TRUE) %>%
-  set_mode("classification")
+df$monthly_charges %>% hist
+df$monthly_charges %>% log %>% hist
 
-# 05. Workflow
-reg_workflow <- workflow() %>%
-  add_model(reg_mod) %>%
-  add_recipe(reg_recipe)
+# Obs: Aplicando a raiz, apresenta uma certa unifomidade, demostrando ter 2 ou 3 padroes
 
-# 06.Cross validation
-val_set <- vfold_cv(df_train, v = 4, strata = churn)
+# Aplicar arvore de descisão para testar importância das variaveis
 
-# 07.trainning
-reg_trained <- reg_workflow %>%
-  tune_grid(
-    val_set,
-    grid = 5,
-    control = control_grid(save_pred = TRUE),
-    metrics = metric_set(accuracy)
+
+# Transformar:
+df <- df %>% mutate(
+    contract = if_else(contract == 'Month-to-month','Mensal','Anual')
+   ,monthly_charges = log(monthly_charges)
+   ,monthly_charges = if_else(monthly_charges <= 3.5, 0,1)
+   ,fibra = if_else(internet_service == 'Fiber optic',1,0)
+)
+
+
+
+# Arvore
+df_tree <- df %>% select(-customer_id,-phone_service, -gender,-internet_service,-total_charges)
+
+fit <- rpart::rpart(formula = churn ~ .
+                    ,data = df_tree
+                    ,method = 'class'
+                    ,parms = list(split = "gini")
+                    ,cp = 0.00002)
+
+fit$variable.importance %>%
+  barplot( las=1
+           ,cex.axis =  .8
+           ,cex.names = .6
+           ,offset = -5
   )
 
-reg_trained %>% show_best()
+#
+poda <- rpart::prune.rpart(fit, cp = .003)
+rpart.plot::rpart.plot(poda
+                       ,type = 0
+                       ,extra = 101
+                       ,box.palette = "GnBu"
+                       ,branch.lty=2
+                       ,shadow.col = 'gray'
+                       ,nn = TRUE
+                       ,cex = .8
+)
 
-# autoplot
-ggplot2::autoplot(reg_trained)
 
-# selecaop
-reg_best_tune <- select_best(reg_trained, "accuracy")
-final_reg_model <- reg_mod %>%
-  finalize_model(reg_best_tune)
 
-final_reg_model$eng_args
-
-workflow() %>%
-  add_recipe(reg_recipe) %>%
-  add_model(final_reg_model) %>%
-  collect_predictions() %>%
-  select(.row, price, .pred) %>%
-  ggplot() +
-  aes(x= price, y = .pred) +
-  geom_point()
