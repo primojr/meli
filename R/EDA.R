@@ -40,7 +40,7 @@ df %>% select(where(is.numeric)) %>%
 
 # Testar transaformações
 df$total_charges %>% hist
-df$total_charges %>% sqrt %>% hist
+df$total_charges %>% log %>% hist
 
 df$monthly_charges %>% hist
 df$monthly_charges %>% log %>% hist
