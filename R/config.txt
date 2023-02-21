@@ -1,0 +1,76 @@
+===============================================================
+>>>>> R 
+
+options(repr.plot.height = 600)
+#options(repr.plot.width = 1, repr.plot.height = 0.75, repr.plot.res = 100)
+%r
+sc <- sparklyr::spark_connect(method = "databricks")
+df <- DBI::dbGetQuery(sc,
+"select * from tabela"
+)
+
+
+library(dplyr)
+SparkR::sparkR.session()
+df_t = SparkR::sql('select * from df ') %>% 
+       SparkR::collect()  
+
+
+
+df <- dplyr::as_tibble(df)
+dplyr::glimpse(df)
+
+==============================================================
+>>>>>> Python
+%py
+df = spark.sql("""
+selec
+select * from tabela
+""").toPandas()
+
+# Salvar no banco
+%python 
+spark.conf.set("spark.sql.autoBroadcastJoinThreshold",-1);
+
+==========================================================
+>>>>> R 
+
+options(repr.plot.height = 600)
+#options(repr.plot.width = 1, repr.plot.height = 0.75, repr.plot.res = 100)
+%r
+sc <- sparklyr::spark_connect(method = "databricks")
+df <- DBI::dbGetQuery(sc,
+"select * from tabela"
+)
+
+
+library(dplyr)
+SparkR::sparkR.session()
+df_t = SparkR::sql('select * from df ') %>% 
+       SparkR::collect()  
+
+
+
+df <- dplyr::as_tibble(df)
+dplyr::glimpse(df)
+
+==============================================================
+>>>>>> Python
+%py
+df = spark.sql("""
+selec
+select * from tabela
+""").toPandas()
+
+# Salvar no banco
+%python 
+spark.conf.set("spark.sql.autoBroadcastJoinThreshold",-1);
+
+===============================================================
+overwrite
+df.write.mode("append")\
+  .option("path","abfss://gold@stcrmprdcore.dfs.core.windows.net/dw_marketing_analytics/tbG_amostra_sobrevivencia")\
+  .option("appendSchema", "True")\
+  .format("delta")\
+  .saveAsTable("dw_marketing_analytics.tbG_amostra_sobrevivencia")
+

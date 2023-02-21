@@ -14,17 +14,18 @@ df$churn = as.character(df$churn)
 #EDA
 # Entender os dados
 skimr::skim(df)
-df %>% DataExplorer::plot_histogram(ncol = 3, nrow = 2) # Continua
-# Aplicar LOG e raiz
 
 df[-1,] %>% DataExplorer::plot_bar(ncol = 5, nrow = 2) # Categorica
 df %>% janitor::tabyl(churn)
 
 # numerica pelo churn
+df %>% DataExplorer::plot_histogram(ncol = 3, nrow = 2) # Continua
+# Aplicar LOG e raiz
 df %>% DataExplorer::plot_boxplot(., by = "churn")
 
 # Variveis Categoricas pelo churn
-df[,-1] %>% DataExplorer::plot_bar(., by = "churn",ncol = 5, nrow = 3 )
+df %>% select(-customer_id) %>%
+  DataExplorer::plot_bar(., by = "churn",ncol = 5, nrow = 3 )
 
 df %>% select(where(is.numeric)) %>%
   na.omit() %>%
@@ -43,7 +44,7 @@ df$total_charges %>% hist
 df$total_charges %>% log %>% hist
 
 df$monthly_charges %>% hist
-df$monthly_charges %>% log %>% hist
+df$monthly_charges %>% sqrt %>% hist
 
 # Obs: Aplicando a raiz, apresenta uma certa unifomidade, demostrando ter 2 ou 3 padroes
 

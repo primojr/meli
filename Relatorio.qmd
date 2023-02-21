@@ -1,0 +1,61 @@
+---
+title: "Churn Telefonia"
+author: "Gerson Jr"
+format: html
+editor: visual
+code-fold: true
+date: '2023-01-25'
+execute: 
+  warning: false
+---
+
+## Case:
+
+> Identificar o que influencia os clientes cancelar o serviço de telefonia `churn` e criar um algoritimo para prever o `churn`.
+
+## Carregar bibliotecas e DataSet
+
+```{r echo = TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidymodels)
+```
+
+```{r echo=TRUE }
+# Ler os dados
+df <- read_csv("date/WA_Fn-UseC_-Telco-Customer-Churn.csv") %>%
+  janitor::clean_names() # Padronizar os nomes das colunas 
+
+dim(df)
+```
+
+Temos uma base com 7043 observações e 21 colunas.
+
+## Analise exploratoria - EDA
+
+No Case foi definido que as variaveis abaixo deferiam ser removidos dos estudo
+
+### Remover atributos definidos no case
+
+```{r}
+remover <- c(
+  'multiple_lines','online_security','payment_method','online_backup',
+  'device_protection', 'streaming_tv','streaming_movies'
+)
+# Remover variaveis que não fazem parte do estudo
+df <- df %>% select(-all_of(remover))
+
+print(remover)
+```
+
+### Caracteristicas da base
+
+-   12 variaveis explicativas, eliminando o `customer_id`
+-   `total_charges` contém missing
+-   A variavel
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#| echo: true
+#| message: false
+#| warning: false
+df %>% skimr::skim()
+```
